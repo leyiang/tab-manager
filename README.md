@@ -19,6 +19,9 @@ A Chrome extension for quickly switching between tabs using keyboard shortcuts, 
 ### Filtering
 - The switcher starts in filter mode automatically
 - Type to filter tabs by title or URL
+- In auto-opened filter mode:
+  - Press j/k to exit filter and navigate
+- In manually opened filter mode (f/), all keys are treated as filter input
 - Press `Enter` to exit filter mode and navigate with j/k
 - If filter matches exactly one tab, pressing `Enter` switches to it directly
 - Press `f` or `/` to enter filter mode again

@@ -179,7 +179,7 @@ function switchTab(tabId) {
   if (!targetTab) return;
 
   // Check if it's the current tab
-  const isCurrentTab = targetTab.active && 
+  const isCurrentTab = targetTab.active &&
     targetTab.windowId === currentTabsData.currentWindowId;
 
   // Only switch if it's not the current tab
@@ -260,6 +260,17 @@ document.addEventListener('keydown', (event) => {
         return;
       }
 
+      // Handle j/k in auto-opened filter mode
+      if (filterInput === '' && ["j", "k"].includes(event.key)) {
+        event.preventDefault();
+        filterMode = false;
+        searchHint.style.display = 'none';
+
+        // Use the navigation function
+        navigateList(event.key === 'j' ? 1 : -1);
+        return;
+      }
+
       if (event.key === 'Backspace') {
         event.preventDefault();
         filterInput = filterInput.slice(0, -1);
@@ -271,6 +282,7 @@ document.addEventListener('keydown', (event) => {
       // Handle printable characters
       if (event.key.length === 1) {
         event.preventDefault();
+
         filterInput += event.key;
         searchHint.textContent = `Filter: ${filterInput}`;
         applyFilter();
@@ -284,6 +296,7 @@ document.addEventListener('keydown', (event) => {
     if (event.key === 'f' || event.key === '/') {
       event.preventDefault();
       filterMode = true;
+      autoOpenedFilter = false; // Mark as manually opened
       filterInput = '';
       searchHint.textContent = 'Filter: ';
       searchHint.style.display = 'block';
@@ -336,20 +349,12 @@ document.addEventListener('keydown', (event) => {
     switch (event.key) {
       case 'j':
         event.preventDefault();
-        // Move focus down
-        items[focusedIndex]?.classList.remove('focused');
-        focusedIndex = (focusedIndex + 1) % items.length;
-        items[focusedIndex]?.classList.add('focused');
-        ensureVisible(items[focusedIndex]);
+        navigateList(1);  // Move down
         break;
 
       case 'k':
         event.preventDefault();
-        // Move focus up
-        items[focusedIndex]?.classList.remove('focused');
-        focusedIndex = (focusedIndex - 1 + items.length) % items.length;
-        items[focusedIndex]?.classList.add('focused');
-        ensureVisible(items[focusedIndex]);
+        navigateList(-1);  // Move up
         break;
 
       case 'Enter':
@@ -444,6 +449,7 @@ function toggleTabList() {
 
       // Start in filter mode
       filterMode = true;
+      autoOpenedFilter = true; // Mark as auto-opened
       filterInput = '';
       searchHint.textContent = 'Filter: ';
       searchHint.style.display = 'block';
@@ -571,7 +577,9 @@ document.addEventListener('click', (event) => {
 
 // Replace search-related functions with filter function
 function applyFilter() {
-  const query = filterInput.toLowerCase();
+  // Remove '/' from filter input when searching
+  const query = filterInput.replace(/\//g, '').toLowerCase();
+
   const filteredTabs = query ?
     currentTabsData.tabs.filter(tab =>
       tab.title.toLowerCase().includes(query) ||
@@ -615,3 +623,15 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     }
   }
 });
+
+// Add state to track if filter was auto-opened
+let autoOpenedFilter = false;
+
+// Add navigation function
+function navigateList(direction) {  // direction: 1 for down (j), -1 for up (k)
+  const items = tabListContainer.querySelectorAll('.tab-item');
+  items[focusedIndex]?.classList.remove('focused');
+  focusedIndex = (focusedIndex + direction + items.length) % items.length;
+  items[focusedIndex]?.classList.add('focused');
+  ensureVisible(items[focusedIndex]);
+}
