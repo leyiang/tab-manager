@@ -173,6 +173,44 @@ const DEFAULT_FAVICON = 'data:image/svg+xml,' + encodeURIComponent(`
   </svg>
 `);
 
+// Add this function to handle all tab switching
+function switchTab(tabId) {
+  const targetTab = currentTabsData.tabs.find(tab => tab.id === tabId);
+  if (!targetTab) return;
+
+  // Check if it's the current tab
+  const isCurrentTab = targetTab.active && 
+    targetTab.windowId === currentTabsData.currentWindowId;
+
+  // Only switch if it's not the current tab
+  if (!isCurrentTab) {
+    chrome.runtime.sendMessage({
+      action: 'switchTab',
+      tabId: tabId
+    });
+  }
+
+tabListContainer.style.display = 'none';
+hiddenInput.blur();
+}
+
+// Update jumpToAudioTab to use switchTab
+function jumpToAudioTab() {
+  const audioTabIndex = currentTabsData.tabs.findIndex(tab => tab.audible);
+  if (audioTabIndex !== -1) {
+    // Update focus in the list
+    const items = tabListContainer.querySelectorAll('.tab-item');
+    items[focusedIndex]?.classList.remove('focused');
+    focusedIndex = audioTabIndex;
+    items[focusedIndex]?.classList.add('focused');
+    ensureVisible(items[focusedIndex]);
+
+    // Switch to the audio tab
+    const audioTab = currentTabsData.tabs[audioTabIndex];
+    switchTab(audioTab.id);
+  }
+}
+
 // Handle keyboard events
 document.addEventListener('keydown', (event) => {
   if (event.key === 't' && !isInputFocused()) {
@@ -181,6 +219,13 @@ document.addEventListener('keydown', (event) => {
   }
 
   if (tabListContainer.style.display === 'block') {
+    // Handle Alt+a in both filter and normal mode
+    if (event.key === 'a' && event.altKey) {
+      event.preventDefault();
+      jumpToAudioTab();
+      return;
+    }
+
     // Handle filter mode
     if (filterMode) {
       if (event.key === 'Enter') {
@@ -196,11 +241,7 @@ document.addEventListener('keydown', (event) => {
 
         // If there's exactly one match, switch to it
         if (filteredTabs.length === 1) {
-          chrome.runtime.sendMessage({
-            action: 'switchTab',
-            tabId: filteredTabs[0].id
-          });
-          hiddenInput.blur();
+          switchTab(filteredTabs[0].id);
         } else {
           // Only hide search hint if there's no filter
           if (!filterInput) {
@@ -304,15 +345,9 @@ document.addEventListener('keydown', (event) => {
 
       case 'Enter':
         event.preventDefault();
-        // Activate focused tab
         const selectedTab = currentTabsData?.tabs[focusedIndex];
         if (selectedTab) {
-          chrome.runtime.sendMessage({
-            action: 'switchTab',
-            tabId: selectedTab.id
-          });
-          // Don't hide the list here, let the blur handler do it
-          hiddenInput.blur();
+          switchTab(selectedTab.id);
         }
         break;
 
@@ -352,24 +387,7 @@ document.addEventListener('keydown', (event) => {
 
       case 'a':
         event.preventDefault();
-        // Find first tab with audio
-        const audioTabIndex = currentTabsData.tabs.findIndex(tab => tab.audible);
-        if (audioTabIndex !== -1) {
-          // Remove focus from current item
-          items[focusedIndex]?.classList.remove('focused');
-          // Update focus to audio tab
-          focusedIndex = audioTabIndex;
-          items[focusedIndex]?.classList.add('focused');
-          ensureVisible(items[focusedIndex]);
-
-          // Optional: automatically switch to the audio tab
-          const audioTab = currentTabsData.tabs[audioTabIndex];
-          chrome.runtime.sendMessage({
-            action: 'switchTab',
-            tabId: audioTab.id
-          });
-          tabListContainer.style.display = 'none';
-        }
+        jumpToAudioTab();
         break;
     }
   }
@@ -494,12 +512,7 @@ function updateTabList(response) {
     }
 
     tabElement.addEventListener('click', () => {
-      chrome.runtime.sendMessage({
-        action: 'switchTab',
-        tabId: tab.id
-      });
-      // Don't hide the list here, let the blur handler do it
-      hiddenInput.blur();
+      switchTab(tab.id);
     });
 
     // Append to tabsContainer instead of tabListContainer

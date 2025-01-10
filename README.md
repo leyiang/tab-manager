@@ -27,7 +27,7 @@ A Chrome extension for quickly switching between tabs using keyboard shortcuts, 
 ### Tab Management
 - Press `d` to close the selected tab
 - Press `e` to restore the last closed tab (up to 10 tabs remembered)
-- Press `a` to jump to the first tab playing audio
+- Press `a` or `alt+a` to jump to the first tab playing audio (Alt+a works in filter mode)
 
 ### Visual Features
 - Shows favicon for each tab
@@ -46,7 +46,7 @@ A Chrome extension for quickly switching between tabs using keyboard shortcuts, 
 - `f` or `/` - Enter filter mode
 - `d` - Close selected tab
 - `e` - Restore last closed tab
-- `a` - Jump to audio tab
+- `a` or `alt+a` - Jump to audio tab (`Alt+a` works in filter mode)
 - `Enter` - Switch to selected tab / exit filter mode
 - `Escape` - Close switcher
 
