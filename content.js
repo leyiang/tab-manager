@@ -136,13 +136,11 @@ let currentTabsData = null;  // Store the current tabs data
 let keySequence = '';
 let keySequenceTimer = null;
 
-// Add state for search
-let searchMode = false;
-let searchInput = '';
-let searchResults = [];
-let currentSearchIndex = -1;
+// Add state for filter
+let filterMode = false;
+let filterInput = '';
 
-// Create search hint element
+// Create search hint element (for filter UI)
 const searchHint = document.createElement('div');
 searchHint.className = 'search-hint';
 
@@ -162,35 +160,48 @@ document.addEventListener('keydown', (event) => {
   }
 
   if (tabListContainer.style.display === 'block') {
-    // Handle search mode
-    if (searchMode && event.key !== 'Escape') {
+    // Handle filter mode
+    if (filterMode) {
       if (event.key === 'Enter') {
-        const focusedItem = tabListContainer.querySelectorAll('.tab-item')[focusedIndex];
-        if (focusedItem) {
-          focusedItem.click();
-        }
-        return;
-      }
-
-      if (event.key === 'n') {
         event.preventDefault();
-        if (event.shiftKey) {
-          navigateToSearchResult(-1); // Previous
-        } else {
-          navigateToSearchResult(1);  // Next
+        filterMode = false;
+        // Only hide search hint if there's no filter
+        if (!filterInput) {
+          searchHint.style.display = 'none';
         }
         return;
       }
 
+      if (event.key === 'Backspace') {
+        event.preventDefault();
+        filterInput = filterInput.slice(0, -1);
+        searchHint.textContent = `Filter: ${filterInput}`;
+        // Hide search hint if filter is empty
+        if (!filterInput) {
+          searchHint.style.display = 'none';
+        }
+        applyFilter();
+        return;
+      }
+
+      // Handle printable characters
+      if (event.key.length === 1) {
+        event.preventDefault();
+        filterInput += event.key;
+        searchHint.textContent = `Filter: ${filterInput}`;
+        applyFilter();
+        return;
+      }
+      
       return; // Let the input handle other keys
     }
 
     // Normal mode key handling
-    if (event.key === '/') {
+    if (event.key === 'f' || event.key === '/') {
       event.preventDefault();
-      searchMode = true;
-      searchInput = '';
-      searchHint.textContent = 'Search: ';
+      filterMode = true;
+      filterInput = '';
+      searchHint.textContent = 'Filter: ';
       searchHint.style.display = 'block';
       return;
     }
@@ -260,9 +271,14 @@ document.addEventListener('keydown', (event) => {
       case 'Enter':
         event.preventDefault();
         // Activate focused tab
-        const focusedItem = items[focusedIndex];
-        if (focusedItem) {
-          focusedItem.click();
+        const selectedTab = currentTabsData?.tabs[focusedIndex];
+        if (selectedTab) {
+          chrome.runtime.sendMessage({
+            action: 'switchTab',
+            tabId: selectedTab.id
+          });
+          // Don't hide the list here, let the blur handler do it
+          hiddenInput.blur();
         }
         break;
 
@@ -274,11 +290,11 @@ document.addEventListener('keydown', (event) => {
       case 'd':
         event.preventDefault();
         // Get the focused tab's ID
-        const focusedTab = currentTabsData?.tabs[focusedIndex];
-        if (focusedTab) {
+        const tabToClose = currentTabsData?.tabs[focusedIndex];
+        if (tabToClose) {
           chrome.runtime.sendMessage({
             action: 'closeTab',
-            tabId: focusedTab.id
+            tabId: tabToClose.id
           }, (response) => {
             if (response) {
               currentTabsData = response;  // Update stored data
@@ -362,18 +378,24 @@ function toggleTabList() {
         return;
       }
 
-      currentTabsData = response;  // Store the response
-      searchMode = false;
-      searchInput = '';
-      searchHint.style.display = 'none';
+      currentTabsData = response;
+      filterMode = false;
+      filterInput = '';
+      // Only hide search hint if there's no active filter
+      if (!filterInput) {
+        searchHint.style.display = 'none';
+      }
       updateTabList(response);
     });
 
     tabListContainer.style.display = 'block';
-    hiddenInput.focus();
+    // Ensure the hidden input gets focus
+    setTimeout(() => {
+      hiddenInput.focus();
+    }, 0);
   } else {
-    tabListContainer.style.display = 'none';
     hiddenInput.blur();
+    // Don't hide the list here, let the blur handler do it
   }
 }
 
@@ -431,7 +453,8 @@ function updateTabList(response) {
         action: 'switchTab',
         tabId: tab.id
       });
-      tabListContainer.style.display = 'none';
+      // Don't hide the list here, let the blur handler do it
+      hiddenInput.blur();
     });
 
     tabListContainer.appendChild(tabElement);
@@ -443,7 +466,7 @@ function updateTabList(response) {
     ensureVisible(focusedItem);
   }
 
-  // Add hints if needed
+  // Update hints
   const hints = [];
   if (response.hasClosedTabs) {
     hints.push('Press e to restore last closed tab');
@@ -451,7 +474,7 @@ function updateTabList(response) {
   if (response.tabs.some(tab => tab.audible)) {
     hints.push('Press a to jump to audio tab');
   }
-  hints.push('gg: top • ge: bottom • /: search • n: next match');
+  hints.push('gg: top • ge: bottom • f/: filter');
 
   if (hints.length > 0) {
     const hintElement = document.createElement('div');
@@ -463,12 +486,14 @@ function updateTabList(response) {
 
 // Handle hidden input blur
 hiddenInput.addEventListener('blur', () => {
-  // Small timeout to allow for click events to process
+  // Longer timeout to ensure proper focus handling
   setTimeout(() => {
     if (document.activeElement !== hiddenInput) {
       tabListContainer.style.display = 'none';
+      // Focus the document body after hiding the list
+      document.body.focus();
     }
-  }, 100);
+  }, 200);
 });
 
 // Update click handler to maintain focus
@@ -480,17 +505,33 @@ document.addEventListener('click', (event) => {
   }
 });
 
-// Handle search input
-searchHint.addEventListener('input', (event) => {
-  searchInput = event.target.value;
-  performSearch();
-});
+// Replace search-related functions with filter function
+function applyFilter() {
+  const query = filterInput.toLowerCase();
+  const filteredTabs = query ? 
+    currentTabsData.tabs.filter(tab => 
+      tab.title.toLowerCase().includes(query) || 
+      tab.url.toLowerCase().includes(query)
+    ) : currentTabsData.tabs;
 
-searchHint.addEventListener('keydown', (event) => {
-  if (event.key === 'Escape') {
-    event.preventDefault();
-    searchMode = false;
-    searchHint.style.display = 'none';
-    hiddenInput.focus();
+  // Update the list with filtered tabs
+  const response = {
+    ...currentTabsData,
+    tabs: filteredTabs
+  };
+
+  updateTabList(response);
+}
+
+// Add message listener at the bottom of the file
+chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+  if (request.action === 'focusContent') {
+    // Focus the document body
+    document.body.focus();
+    // Also focus any default focusable element if it exists
+    const focusableElement = document.querySelector('body, [tabindex="0"], input, textarea, button, [href], select, [contenteditable="true"]');
+    if (focusableElement) {
+      focusableElement.focus();
+    }
   }
 });

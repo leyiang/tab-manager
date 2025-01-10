@@ -41,8 +41,16 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 
   if (request.action === 'switchTab') {
     try {
-      chrome.tabs.update(request.tabId, { active: true });
-      chrome.windows.update(sender.tab.windowId, { focused: true });
+      // First activate the tab
+      chrome.tabs.update(request.tabId, { active: true }, (tab) => {
+        // Then focus its window
+        chrome.windows.update(tab.windowId, { focused: true }, () => {
+          // Only send focus message if switching to a different tab
+          if (sender.tab.id !== request.tabId) {
+            chrome.tabs.sendMessage(request.tabId, { action: 'focusContent' });
+          }
+        });
+      });
     } catch (error) {
       console.error('Error switching tabs:', error);
     }
