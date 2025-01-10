@@ -14,8 +14,8 @@ tabListContainer.style.cssText = `
   padding: 12px;
   width: 600px;
   max-height: 700px;
-  overflow-y: auto;
   box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+  position: absolute;
 `;
 
 // Create a style element for tab items
@@ -31,6 +31,8 @@ style.textContent = `
     font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     font-size: 16px;
     color: #333;
+    border-radius: 8px;
+    margin: 0 4px;
   }
 
   #quick-tab-switcher .tab-item:last-of-type {
@@ -77,6 +79,8 @@ style.textContent = `
   #quick-tab-switcher .tab-item.focused {
     background-color: #e8f0fe;
     outline: 2px solid #1a73e8;
+    outline-offset: -2px;
+    border-radius: 8px;
   }
 
   #quick-tab-switcher .tab-item.focused:hover {
@@ -100,15 +104,21 @@ style.textContent = `
   }
 
   #quick-tab-switcher .search-hint {
-    position: sticky;
-    top: 0;
-    background: white;
+    position: absolute;
+    top: -50px;
+	left: 0;
+	right: 0;
+	height: 44px;
+	line-height: 32px;
+    background: rgba(255, 255, 255, 0.95);
+	border: 1px solid #ccc;
     padding: 8px 16px;
-    border-bottom: 1px solid #eee;
-    margin-bottom: 8px;
-    font-size: 14px;
+    border-radius: 6px;
+    font-size: 16px;
     color: #666;
     display: none;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    z-index: 1;
   }
 
   #quick-tab-switcher .tab-item.search-match {
