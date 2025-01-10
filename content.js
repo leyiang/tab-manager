@@ -33,7 +33,7 @@ style.textContent = `
     color: #333;
   }
 
-  #quick-tab-switcher .tab-item:last-child {
+  #quick-tab-switcher .tab-item:last-of-type {
     border-bottom: none;
   }
 
@@ -118,6 +118,27 @@ style.textContent = `
   #quick-tab-switcher .tab-item.search-match.focused {
     background-color: #fff176;
   }
+
+  #quick-tab-switcher .tabs-container {
+    display: flex;
+    flex-direction: column;
+  }
+
+  #quick-tab-switcher .tab-item {
+    padding: 12px 16px;
+    cursor: pointer;
+    border-bottom: 1px solid #eee;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    font-size: 16px;
+    color: #333;
+  }
+
+  #quick-tab-switcher .tabs-container .tab-item:last-child {
+    border-bottom: none;
+  }
 `;
 
 document.head.appendChild(style);
@@ -165,9 +186,26 @@ document.addEventListener('keydown', (event) => {
       if (event.key === 'Enter') {
         event.preventDefault();
         filterMode = false;
-        // Only hide search hint if there's no filter
-        if (!filterInput) {
-          searchHint.style.display = 'none';
+
+        // Get filtered tabs
+        const filteredTabs = filterInput ?
+          currentTabsData.tabs.filter(tab =>
+            tab.title.toLowerCase().includes(filterInput.toLowerCase()) ||
+            tab.url.toLowerCase().includes(filterInput.toLowerCase())
+          ) : currentTabsData.tabs;
+
+        // If there's exactly one match, switch to it
+        if (filteredTabs.length === 1) {
+          chrome.runtime.sendMessage({
+            action: 'switchTab',
+            tabId: filteredTabs[0].id
+          });
+          hiddenInput.blur();
+        } else {
+          // Only hide search hint if there's no filter
+          if (!filterInput) {
+            searchHint.style.display = 'none';
+          }
         }
         return;
       }
@@ -176,10 +214,6 @@ document.addEventListener('keydown', (event) => {
         event.preventDefault();
         filterInput = filterInput.slice(0, -1);
         searchHint.textContent = `Filter: ${filterInput}`;
-        // Hide search hint if filter is empty
-        if (!filterInput) {
-          searchHint.style.display = 'none';
-        }
         applyFilter();
         return;
       }
@@ -192,7 +226,7 @@ document.addEventListener('keydown', (event) => {
         applyFilter();
         return;
       }
-      
+
       return; // Let the input handle other keys
     }
 
@@ -379,12 +413,19 @@ function toggleTabList() {
       }
 
       currentTabsData = response;
-      filterMode = false;
+
+      // Set initial focus to current tab
+      const currentTabIndex = response.tabs.findIndex(
+        tab => tab.active && tab.windowId === response.currentWindowId
+      );
+      focusedIndex = currentTabIndex !== -1 ? currentTabIndex : 0;
+
+      // Start in filter mode
+      filterMode = true;
       filterInput = '';
-      // Only hide search hint if there's no active filter
-      if (!filterInput) {
-        searchHint.style.display = 'none';
-      }
+      searchHint.textContent = 'Filter: ';
+      searchHint.style.display = 'block';
+
       updateTabList(response);
     });
 
@@ -404,6 +445,11 @@ function updateTabList(response) {
   tabListContainer.innerHTML = '';
   tabListContainer.appendChild(searchHint);  // Add search hint
 
+  // Create container for tab items
+  const tabsContainer = document.createElement('div');
+  tabsContainer.className = 'tabs-container';
+  tabListContainer.appendChild(tabsContainer);
+
   // Get current tab ID from the response
   const currentTabId = response.tabs.find(
     tab => tab.active && tab.windowId === response.currentWindowId
@@ -413,10 +459,9 @@ function updateTabList(response) {
     const tabElement = document.createElement('div');
     tabElement.className = 'tab-item';
 
-    // Only add focused class for current tab
-    if (tab.id === currentTabId) {
+    // Add focused class based on focusedIndex
+    if (index === focusedIndex) {
       tabElement.classList.add('focused');
-      focusedIndex = index;
     }
 
     const tabInfo = document.createElement('div');
@@ -457,16 +502,17 @@ function updateTabList(response) {
       hiddenInput.blur();
     });
 
-    tabListContainer.appendChild(tabElement);
+    // Append to tabsContainer instead of tabListContainer
+    tabsContainer.appendChild(tabElement);
   });
 
   // Ensure the focused item is visible
-  const focusedItem = tabListContainer.querySelector('.tab-item.focused');
+  const focusedItem = tabsContainer.querySelector('.tab-item.focused');
   if (focusedItem) {
     ensureVisible(focusedItem);
   }
 
-  // Update hints
+  // Add hints at the bottom
   const hints = [];
   if (response.hasClosedTabs) {
     hints.push('Press e to restore last closed tab');
@@ -508,17 +554,33 @@ document.addEventListener('click', (event) => {
 // Replace search-related functions with filter function
 function applyFilter() {
   const query = filterInput.toLowerCase();
-  const filteredTabs = query ? 
-    currentTabsData.tabs.filter(tab => 
-      tab.title.toLowerCase().includes(query) || 
+  const filteredTabs = query ?
+    currentTabsData.tabs.filter(tab =>
+      tab.title.toLowerCase().includes(query) ||
       tab.url.toLowerCase().includes(query)
     ) : currentTabsData.tabs;
+
+  // Get the currently focused tab before updating
+  const currentFocusedTab = currentTabsData.tabs[focusedIndex];
 
   // Update the list with filtered tabs
   const response = {
     ...currentTabsData,
     tabs: filteredTabs
   };
+
+  // Find if the currently focused tab is in the filtered results
+  const newFocusedIndex = currentFocusedTab ?
+    filteredTabs.findIndex(tab => tab.id === currentFocusedTab.id) : -1;
+
+  // Update focusedIndex before rendering
+  if (newFocusedIndex !== -1) {
+    // Keep focus on the same tab if it's in filtered results
+    focusedIndex = newFocusedIndex;
+  } else {
+    // Focus first item if current tab is not in filtered results
+    focusedIndex = 0;
+  }
 
   updateTabList(response);
 }
