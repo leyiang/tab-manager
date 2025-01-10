@@ -120,4 +120,20 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       sendResponse(null);
     }
   }
+
+  if (request.action === 'openLocalFile') {
+    // Double check that it's a PDF file, ignoring URL parameters
+    const urlWithoutParams = request.fileUrl.split('#')[0];
+    if (!urlWithoutParams.toLowerCase().endsWith('.pdf')) {
+      console.error('Only PDF files are allowed');
+      return;
+    }
+
+    chrome.tabs.create({
+      url: request.fileUrl,
+      active: true
+    }).catch(err => {
+      console.error('Failed to open PDF file:', err);
+    });
+  }
 });

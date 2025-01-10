@@ -635,3 +635,22 @@ function navigateList(direction) {  // direction: 1 for down (j), -1 for up (k)
   items[focusedIndex]?.classList.add('focused');
   ensureVisible(items[focusedIndex]);
 }
+
+// Add this check before adding the event listener
+const currentHost = window.location.hostname;
+if (currentHost === 'localhost' || currentHost === 'todo.app') {
+  document.addEventListener('openLocalFile', (event) => {
+    const fileUrl = event.detail.fileUrl;
+    // Check if it's a PDF file, ignoring URL parameters
+    const urlWithoutParams = fileUrl.split('#')[0];
+    if (!urlWithoutParams.toLowerCase().endsWith('.pdf')) {
+      console.error('Only PDF files are allowed');
+      return;
+    }
+
+    chrome.runtime.sendMessage({
+      action: 'openLocalFile',
+      fileUrl: fileUrl
+    });
+  });
+}
