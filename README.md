@@ -48,7 +48,7 @@ A Chrome extension for quickly switching between tabs using keyboard shortcuts, 
 - `e` - Restore last closed tab
 - `a` or `alt+a` - Jump to audio tab (`Alt+a` works in filter mode)
 - `Enter` - Switch to selected tab / exit filter mode
-- `Escape` - Close switcher
+- `Escape` or `[` - Close switcher
 
 ## Notes
 - Plugin is opend with filter mode (Type enter to normal mode)

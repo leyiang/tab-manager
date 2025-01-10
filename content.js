@@ -226,6 +226,15 @@ document.addEventListener('keydown', (event) => {
       return;
     }
 
+    // Handle Escape and '[' in both modes
+    if (event.key === 'Escape' || event.key === '[') {
+      event.preventDefault();
+      // Hide list immediately
+      tabListContainer.style.display = 'none';
+    	hiddenInput.blur();
+      return;
+    }
+
     // Handle filter mode
     if (filterMode) {
       if (event.key === 'Enter') {
@@ -349,11 +358,6 @@ document.addEventListener('keydown', (event) => {
         if (selectedTab) {
           switchTab(selectedTab.id);
         }
-        break;
-
-      case 'Escape':
-        tabListContainer.style.display = 'none';
-        hiddenInput.blur();
         break;
 
       case 'd':
@@ -545,14 +549,15 @@ function updateTabList(response) {
 
 // Handle hidden input blur
 hiddenInput.addEventListener('blur', () => {
-  // Longer timeout to ensure proper focus handling
-  setTimeout(() => {
-    if (document.activeElement !== hiddenInput) {
-      tabListContainer.style.display = 'none';
-      // Focus the document body after hiding the list
-      document.body.focus();
-    }
-  }, 200);
+  // Only handle blur if the list is still visible (not already hidden by Escape)
+  if (tabListContainer.style.display === 'block') {
+    setTimeout(() => {
+      if (document.activeElement !== hiddenInput) {
+        tabListContainer.style.display = 'none';
+        document.body.focus();
+      }
+    }, 50);  // Reduced timeout, just enough for click events
+  }
 });
 
 // Update click handler to maintain focus
