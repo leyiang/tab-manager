@@ -185,6 +185,16 @@ style.textContent = `
     color: #666;
     flex-shrink: 0;
   }
+
+  #quick-tab-switcher .tab-item .current-indicator {
+    margin-left: 8px;
+    padding: 2px 6px;
+    background: #e8f0fe;
+    border-radius: 4px;
+    font-size: 12px;
+    color: #1a73e8;
+    flex-shrink: 0;
+  }
 `;
 
 document.head.appendChild(style);
@@ -602,6 +612,15 @@ function updateTabList(response) {
       `);
       audioIndicator.title = 'Playing audio';
       tabElement.appendChild(audioIndicator);
+    }
+
+    // Add current tab indicator before window indicator
+    if (tab.active && tab.windowId === response.currentWindowId) {
+      const currentIndicator = document.createElement('span');
+      currentIndicator.className = 'current-indicator';
+      currentIndicator.textContent = 'Current';
+      currentIndicator.title = 'Current Tab';
+      tabElement.appendChild(currentIndicator);
     }
 
     // Add window indicator if it's from another window
