@@ -39,6 +39,8 @@ A Chrome extension for quickly switching between tabs using keyboard shortcuts, 
 - Filtered tabs are updated in real-time as you type
 - Maintains focus position when filtering if possible
 - Shows helpful hints at the bottom of the list
+- Shows a fixed number of tabs with smooth scrolling
+- Maintains context while scrolling with offset
 
 ## Keyboard Shortcuts Summary
 - `t` - Open tab switcher
@@ -55,3 +57,5 @@ A Chrome extension for quickly switching between tabs using keyboard shortcuts, 
 
 ## Notes
 - Plugin is opend with filter mode (Type enter to normal mode)
+- Shows up to 10 tabs at once, scrolls smoothly when navigating
+- Keeps 3 items of context when scrolling up or down

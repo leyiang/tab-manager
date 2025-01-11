@@ -1,3 +1,7 @@
+// Add constants for tab display first
+const MAX_VISIBLE_TABS = 10;  // Maximum number of tabs to show at once
+const SCROLL_OFFSET = 3;      // Number of items to scroll when reaching edge
+
 // Create and append the tab list container
 const tabListContainer = document.createElement('div');
 tabListContainer.id = 'quick-tab-switcher';
@@ -149,6 +153,11 @@ style.textContent = `
   #quick-tab-switcher .tabs-container .tab-item:last-child {
     border-bottom: none;
   }
+
+  #quick-tab-switcher .tabs-container {
+    max-height: ${MAX_VISIBLE_TABS * 52}px;  /* 52px is approximate height of each tab item */
+    overflow-y: auto;
+  }
 `;
 
 document.head.appendChild(style);
@@ -206,13 +215,10 @@ function switchTab(tabId) {
 function jumpToAudioTab() {
   const audioTabIndex = currentTabsData.tabs.findIndex(tab => tab.audible);
   if (audioTabIndex !== -1) {
-    // Update focus in the list
-    const items = tabListContainer.querySelectorAll('.tab-item');
-    items[focusedIndex]?.classList.remove('focused');
-    focusedIndex = audioTabIndex;
-    items[focusedIndex]?.classList.add('focused');
-    ensureVisible(items[focusedIndex]);
-
+    // Calculate direction to audio tab
+    const direction = audioTabIndex - focusedIndex;
+    navigateList(direction);
+    
     // Switch to the audio tab
     const audioTab = currentTabsData.tabs[audioTabIndex];
     switchTab(audioTab.id);
@@ -329,11 +335,9 @@ document.addEventListener('keydown', (event) => {
       // Check for 'gg' sequence
       if (keySequence === 'gg') {
         // Go to start of list
-        items[focusedIndex]?.classList.remove('focused');
-        focusedIndex = 0;
-        items[focusedIndex]?.classList.add('focused');
-        ensureVisible(items[focusedIndex]);
+        navigateList(-focusedIndex); // Move up by current index to reach top
         keySequence = '';
+        return;
       }
       return;
     }
@@ -341,10 +345,8 @@ document.addEventListener('keydown', (event) => {
     if (event.key === 'e' && keySequence === 'g') {
       event.preventDefault();
       // Go to end of list
-      items[focusedIndex]?.classList.remove('focused');
-      focusedIndex = items.length - 1;
-      items[focusedIndex]?.classList.add('focused');
-      ensureVisible(items[focusedIndex]);
+      const items = tabListContainer.querySelectorAll('.tab-item');
+      navigateList(items.length - 1 - focusedIndex); // Move down to reach bottom
       keySequence = '';
       return;
     }
@@ -413,21 +415,6 @@ document.addEventListener('keydown', (event) => {
     }
   }
 });
-
-// Helper function to ensure the focused item is visible
-function ensureVisible(element) {
-  if (!element) return;
-
-  const container = tabListContainer;
-  const elementRect = element.getBoundingClientRect();
-  const containerRect = container.getBoundingClientRect();
-
-  if (elementRect.bottom > containerRect.bottom) {
-    container.scrollTop += elementRect.bottom - containerRect.bottom;
-  } else if (elementRect.top < containerRect.top) {
-    container.scrollTop -= containerRect.top - elementRect.top;
-  }
-}
 
 // Check if any input element is focused
 function isInputFocused() {
@@ -638,11 +625,35 @@ let autoOpenedFilter = false;
 
 // Add navigation function
 function navigateList(direction) {  // direction: 1 for down (j), -1 for up (k)
+  const container = tabListContainer.querySelector('.tabs-container');
   const items = tabListContainer.querySelectorAll('.tab-item');
+  
+  // Remove previous focus
   items[focusedIndex]?.classList.remove('focused');
+  
+  // Calculate new index
   focusedIndex = (focusedIndex + direction + items.length) % items.length;
-  items[focusedIndex]?.classList.add('focused');
-  ensureVisible(items[focusedIndex]);
+  
+  // Add focused class to new item
+  const newFocusedItem = items[focusedIndex];
+  newFocusedItem?.classList.add('focused');
+  
+  // Immediately scroll to the new position
+  const itemHeight = newFocusedItem.offsetHeight;
+  const itemTop = newFocusedItem.offsetTop;
+  const containerHeight = container.clientHeight;
+  
+  // Force a reflow to ensure immediate update
+  container.style.display = 'none';
+  container.offsetHeight; // Force reflow
+  container.style.display = '';
+  
+  // Set scroll position
+  if (itemTop < container.scrollTop + itemHeight * SCROLL_OFFSET) {
+    container.scrollTop = Math.max(0, itemTop - itemHeight * SCROLL_OFFSET);
+  } else if (itemTop + itemHeight > container.scrollTop + containerHeight - itemHeight * SCROLL_OFFSET) {
+    container.scrollTop = itemTop - containerHeight + itemHeight * (SCROLL_OFFSET + 1);
+  }
 }
 
 // Add this check before adding the event listener
