@@ -19,7 +19,6 @@ tabListContainer.style.cssText = `
   width: 600px;
   max-height: 700px;
   box-shadow: 0 4px 20px rgba(0,0,0,0.15);
-  position: absolute;
 `;
 
 // Create a style element for tab items
