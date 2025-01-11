@@ -1,3 +1,21 @@
+// Add browser shortcuts that we should not prevent
+const BROWSER_SHORTCUTS = [
+  // Navigation/Page shortcuts
+  { key: 'r', ctrl: true, alt: false },     // Reload
+  { key: 'd', ctrl: false, alt: true },     // Focus address bar
+  { key: 'f5', ctrl: false, alt: false },   // Reload
+  { key: 'f6', ctrl: false, alt: false },   // Focus address bar
+];
+
+// Update the helper function to properly check alt key
+function isBrowserShortcut(event) {
+  return BROWSER_SHORTCUTS.some(shortcut => 
+    shortcut.key === event.key && 
+    shortcut.ctrl === event.ctrlKey &&
+    shortcut.alt === event.altKey  // Check exact match for alt key
+  );
+}
+
 // Add constants for tab display first
 const MAX_VISIBLE_TABS = 10;  // Maximum number of tabs to show at once
 const SCROLL_OFFSET = 3;      // Number of items to scroll when reaching edge
@@ -269,6 +287,13 @@ function jumpToAudioTab() {
 
 // Handle keyboard events
 document.addEventListener('keydown', (event) => {
+  // Let browser shortcuts pass through
+
+  if (isBrowserShortcut(event)) {
+	
+    return;
+  }
+
   if (event.key === 't' && !isInputFocused()) {
     event.preventDefault();
     toggleTabList();
@@ -594,12 +619,6 @@ function updateTabList(response) {
     // Append to tabsContainer instead of tabListContainer
     tabsContainer.appendChild(tabElement);
   });
-
-  // Ensure the focused item is visible
-  const focusedItem = tabsContainer.querySelector('.tab-item.focused');
-  if (focusedItem) {
-    ensureVisible(focusedItem);
-  }
 }
 
 // Handle hidden input blur
