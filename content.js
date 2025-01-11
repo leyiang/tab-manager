@@ -127,12 +127,12 @@ style.textContent = `
   #quick-tab-switcher .search-hint {
     position: absolute;
     top: -50px;
-	left: 0;
-	right: 0;
-	height: 44px;
-	line-height: 32px;
-    background: rgba(255, 255, 255, 0.95);
-	border: 1px solid #ccc;
+    left: 0;
+    right: 0;
+    height: 44px;
+    line-height: 32px;
+    background: white;
+    border: 1px solid #ccc;
     padding: 8px 16px;
     border-radius: 6px;
     font-size: 16px;
