@@ -199,9 +199,7 @@ function switchTab(tabId) {
       tabId: tabId
     });
   }
-
-tabListContainer.style.display = 'none';
-hiddenInput.blur();
+  closeList();
 }
 
 // Update jumpToAudioTab to use switchTab
@@ -237,11 +235,9 @@ document.addEventListener('keydown', (event) => {
     }
 
     // Handle Escape and '[' in both modes
-    if (event.key === 'Escape' || event.key === '[') {
+    if (event.key === 'Escape' || event.key === '[' ) {
       event.preventDefault();
-      // Hide list immediately
-      tabListContainer.style.display = 'none';
-    	hiddenInput.blur();
+      closeList();
       return;
     }
 
@@ -375,6 +371,7 @@ document.addEventListener('keydown', (event) => {
         }
         break;
 
+      case 'x':
       case 'd':
         event.preventDefault();
         // Get the focused tab's ID
@@ -407,6 +404,11 @@ document.addEventListener('keydown', (event) => {
       case 'a':
         event.preventDefault();
         jumpToAudioTab();
+        break;
+
+      case 'q':
+        event.preventDefault();
+        closeList();
         break;
     }
   }
@@ -565,14 +567,12 @@ function updateTabList(response) {
 
 // Handle hidden input blur
 hiddenInput.addEventListener('blur', () => {
-  // Only handle blur if the list is still visible (not already hidden by Escape)
   if (tabListContainer.style.display === 'block') {
     setTimeout(() => {
       if (document.activeElement !== hiddenInput) {
-        tabListContainer.style.display = 'none';
-        document.body.focus();
+        closeList();
       }
-    }, 50);  // Reduced timeout, just enough for click events
+    }, 50);
   }
 });
 
@@ -580,8 +580,7 @@ hiddenInput.addEventListener('blur', () => {
 document.addEventListener('click', (event) => {
   if (!tabListContainer.contains(event.target) &&
       tabListContainer.style.display === 'block') {
-    tabListContainer.style.display = 'none';
-    hiddenInput.blur();
+    closeList();
   }
 });
 
@@ -663,4 +662,10 @@ if (currentHost === 'localhost' || currentHost === 'todo.app') {
       fileUrl: fileUrl
     });
   });
+}
+
+// Add this function near other helper functions
+function closeList() {
+  tabListContainer.style.display = 'none';
+  hiddenInput.blur();
 }
