@@ -158,6 +158,16 @@ style.textContent = `
     max-height: ${MAX_VISIBLE_TABS * 52}px;  /* 52px is approximate height of each tab item */
     overflow-y: auto;
   }
+
+  #quick-tab-switcher .tab-item .window-indicator {
+    margin-left: 8px;
+    padding: 2px 6px;
+    background: #f0f0f0;
+    border-radius: 4px;
+    font-size: 12px;
+    color: #666;
+    flex-shrink: 0;
+  }
 `;
 
 document.head.appendChild(style);
@@ -191,6 +201,39 @@ const DEFAULT_FAVICON = 'data:image/svg+xml,' + encodeURIComponent(`
     <path d="M12 6.5c-3 0-5.5 2.5-5.5 5.5s2.5 5.5 5.5 5.5 5.5-2.5 5.5-5.5S15 6.5 12 6.5zm0 2c1.9 0 3.5 1.6 3.5 3.5S13.9 15.5 12 15.5 8.5 13.9 8.5 12 10.1 8.5 12 8.5z" fill="#909399"/>
   </svg>
 `);
+
+// Add state for window filter
+let showAllWindows = false;
+
+// Add at the top with other state variables
+const hints = {
+  restore: 'Press e to restore last closed tab',
+  audio: 'Press a to jump to audio tab',
+  navigation: 'gg: top • ge: bottom • f/: filter',
+  window: (showAll) => `Alt+w: ${showAll ? 'hide' : 'show'} other windows`
+};
+
+// Add this function to manage hints
+function createHintElement(response) {
+  const activeHints = [];
+  
+  if (response.hasClosedTabs) {
+    activeHints.push(hints.restore);
+  }
+  
+  if (response.tabs.some(tab => tab.audible)) {
+    activeHints.push(hints.audio);
+  }
+  
+  activeHints.push(hints.navigation);
+  activeHints.push(hints.window(showAllWindows));
+
+  const hintElement = document.createElement('div');
+  hintElement.className = 'restore-hint';
+  hintElement.textContent = activeHints.join(' • ');
+  
+  return hintElement;
+}
 
 // Add this function to handle all tab switching
 function switchTab(tabId) {
@@ -233,11 +276,20 @@ document.addEventListener('keydown', (event) => {
   }
 
   if (tabListContainer.style.display === 'block') {
-    // Handle Alt+a in both filter and normal mode
-    if (event.key === 'a' && event.altKey) {
-      event.preventDefault();
-      jumpToAudioTab();
-      return;
+    // Handle Alt+a and Alt+w in both filter and normal mode
+    if (event.altKey) {
+      switch (event.key) {
+        case 'a':
+          event.preventDefault();
+          jumpToAudioTab();
+          return;
+
+        case 'w':
+          event.preventDefault();
+          showAllWindows = !showAllWindows;
+          updateTabList(currentTabsData);
+          return;
+      }
     }
 
     // Handle Escape and '[' in both modes
@@ -469,20 +521,28 @@ function toggleTabList() {
 
 // Function to update the tab list UI
 function updateTabList(response) {
-  tabListContainer.innerHTML = '';
-  tabListContainer.appendChild(searchHint);  // Add search hint
+  // Filter tabs based on window setting
+  const filteredTabs = showAllWindows ? 
+    response.tabs : 
+    response.tabs.filter(tab => tab.windowId === response.currentWindowId);
 
-  // Create container for tab items
+  const windowResponse = {
+    ...response,
+    tabs: filteredTabs
+  };
+
+  // Create tabs container
   const tabsContainer = document.createElement('div');
   tabsContainer.className = 'tabs-container';
+
+  // Clear and rebuild
+  tabListContainer.innerHTML = '';
+  tabListContainer.appendChild(searchHint);
   tabListContainer.appendChild(tabsContainer);
+  tabListContainer.appendChild(createHintElement(response));  // Use new function
 
-  // Get current tab ID from the response
-  const currentTabId = response.tabs.find(
-    tab => tab.active && tab.windowId === response.currentWindowId
-  )?.id;
-
-  response.tabs.forEach((tab, index) => {
+  // Create and append tabs
+  windowResponse.tabs.forEach((tab, index) => {
     const tabElement = document.createElement('div');
     tabElement.className = 'tab-item';
 
@@ -520,6 +580,14 @@ function updateTabList(response) {
       tabElement.appendChild(audioIndicator);
     }
 
+    // Add window indicator if it's from another window
+    if (showAllWindows && tab.windowId !== response.currentWindowId) {
+      const windowIndicator = document.createElement('span');
+      windowIndicator.className = 'window-indicator';
+      windowIndicator.textContent = 'Other Window';
+      tabElement.appendChild(windowIndicator);
+    }
+
     tabElement.addEventListener('click', () => {
       switchTab(tab.id);
     });
@@ -532,23 +600,6 @@ function updateTabList(response) {
   const focusedItem = tabsContainer.querySelector('.tab-item.focused');
   if (focusedItem) {
     ensureVisible(focusedItem);
-  }
-
-  // Add hints at the bottom
-  const hints = [];
-  if (response.hasClosedTabs) {
-    hints.push('Press e to restore last closed tab');
-  }
-  if (response.tabs.some(tab => tab.audible)) {
-    hints.push('Press a to jump to audio tab');
-  }
-  hints.push('gg: top • ge: bottom • f/: filter');
-
-  if (hints.length > 0) {
-    const hintElement = document.createElement('div');
-    hintElement.className = 'restore-hint';
-    hintElement.textContent = hints.join(' • ');
-    tabListContainer.appendChild(hintElement);
   }
 }
 
@@ -573,14 +624,18 @@ document.addEventListener('click', (event) => {
 
 // Replace search-related functions with filter function
 function applyFilter() {
-  // Remove '/' from filter input when searching
   const query = filterInput.replace(/\//g, '').toLowerCase();
 
+  // First filter by window if needed, then by search query
+  const windowTabs = showAllWindows ? 
+    currentTabsData.tabs : 
+    currentTabsData.tabs.filter(tab => tab.windowId === currentTabsData.currentWindowId);
+
   const filteredTabs = query ?
-    currentTabsData.tabs.filter(tab =>
+    windowTabs.filter(tab =>
       tab.title.toLowerCase().includes(query) ||
       tab.url.toLowerCase().includes(query)
-    ) : currentTabsData.tabs;
+    ) : windowTabs;
 
   // Get the currently focused tab before updating
   const currentFocusedTab = currentTabsData.tabs[focusedIndex];
