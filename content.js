@@ -451,6 +451,7 @@ document.addEventListener('keydown', (event) => {
         navigateList(-1);  // Move up
         break;
 
+	  case " ":
       case 'Enter':
         event.preventDefault();
         const selectedTab = currentTabsData?.tabs[focusedIndex];
