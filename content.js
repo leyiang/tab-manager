@@ -566,6 +566,11 @@ function updateTabList(response) {
     tabs: filteredTabs
   };
 
+  // Adjust focusedIndex if it's out of bounds
+  if (focusedIndex >= filteredTabs.length) {
+    focusedIndex = Math.max(0, filteredTabs.length - 1);
+  }
+
   // Create tabs container
   const tabsContainer = document.createElement('div');
   tabsContainer.className = 'tabs-container';
