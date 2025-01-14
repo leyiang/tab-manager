@@ -22,5 +22,11 @@
       "matches": ["<all_urls>"],
       "js": ["content.js"]
     }
-  ]
+  ],
+
+  "web_accessible_resources": [ {
+    "resources": [ "inject.js", "inject.css" ],
+    "matches": [ "<all_urls>", "chrome-extension://*/*" ],
+    "use_dynamic_url": false
+  } ]
 }
